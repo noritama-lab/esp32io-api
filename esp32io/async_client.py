@@ -12,7 +12,6 @@ from .models import (
 )
 from .base import ESP32IOBase
 
-
 class ESP32IOAsync(ESP32IOBase):
     RECONNECT_WAIT = 0.5
 
