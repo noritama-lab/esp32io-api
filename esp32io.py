@@ -1,0 +1,225 @@
+import serial
+import json
+import time
+from typing import Any, Dict, Optional
+
+
+class ESP32IOError(Exception):
+    """ESP32 が status=error を返したときの例外"""
+    pass
+
+
+class ESP32IOTimeoutError(TimeoutError):
+    """ESP32 からの応答がタイムアウトしたときの例外"""
+    pass
+
+
+class ESP32IOProtocolError(RuntimeError):
+    """ESP32 から不正な JSON や予期しない応答が返ったときの例外"""
+    pass
+
+
+class ESP32IO:
+    """
+    ESP32 と JSON ベースのシリアルプロトコルで通信するクライアント。
+
+    想定プロトコル:
+      PC -> ESP32: {"cmd": "read_dio", "pin_id": 0}
+      ESP32 -> PC: {"status": "ok", "value": 1}
+
+      PC -> ESP32: {"cmd": "set_pwm", "pin_id": 0, "duty": 128}
+      ESP32 -> PC: {"status": "ok"}
+    """
+
+    def __init__(
+        self,
+        port: str,
+        baud: int = 115200,
+        timeout: float = 2.0,
+        debug: bool = False,
+        recv_timeout: Optional[float] = None,
+    ) -> None:
+        """
+        :param port: 例: "COM5" や "/dev/ttyUSB0"
+        :param baud: ボーレート (デフォルト: 115200)
+        :param timeout: pyserial の read タイムアウト秒数
+        :param debug: True にすると送受信ログを表示
+        :param recv_timeout: _safe_recv 内での最大待ち時間（秒）。
+                             None の場合は無制限ループ（pyserial の timeout に依存）
+        """
+        self.debug = debug
+        self.ser = serial.Serial(port, baudrate=baud, timeout=timeout)
+        self.recv_timeout = recv_timeout
+
+        # ESP32 側のリセット直後のゴミを捨てる
+        time.sleep(0.5)
+        self.ser.reset_input_buffer()
+
+        # ウォームアップ: ping を投げて応答を捨てる（失敗しても無視）
+        try:
+            self._send({"cmd": "ping"})
+            self._safe_recv()
+        except Exception:
+            pass
+
+    # ------------------------------
+    # 内部ユーティリティ
+    # ------------------------------
+    def _log(self, *args: Any) -> None:
+        if self.debug:
+            print("[ESP32IO]", *args)
+
+    def _send(self, obj: Dict[str, Any]) -> None:
+        """JSON オブジェクトを 1 行の JSON として送信する"""
+        line = json.dumps(obj, separators=(",", ":")) + "\n"
+        self._log("SEND:", line.strip())
+        data = line.encode("utf-8")
+
+        total = 0
+        while total < len(data):
+            written = self.ser.write(data[total:])
+            if written == 0:
+                raise ESP32IOProtocolError("Failed to write to serial port")
+            total += written
+
+    def _safe_recv(self) -> Dict[str, Any]:
+        """
+        空行を無視し、JSON を返すまで待つ。
+        - status=error の場合は ESP32IOError を送出
+        - recv_timeout を超えた場合は ESP32IOTimeoutError を送出
+        - 不正 JSON の場合は ESP32IOProtocolError を送出
+        """
+        start = time.perf_counter()
+
+        while True:
+            if self.recv_timeout is not None:
+                if (time.perf_counter() - start) > self.recv_timeout:
+                    raise ESP32IOTimeoutError("Timeout waiting for response from ESP32")
+
+            line_bytes = self.ser.readline()
+            if not line_bytes:
+                # pyserial の timeout による空読み。recv_timeout が None なら継続。
+                if self.recv_timeout is None:
+                    continue
+                # recv_timeout 管理は上の if でやっているのでここでは単に continue
+                continue
+
+            try:
+                line = line_bytes.decode("utf-8", errors="replace").strip()
+            except UnicodeDecodeError as e:
+                raise ESP32IOProtocolError(f"Invalid UTF-8 from ESP32: {line_bytes!r}") from e
+
+            if not line:
+                # 空行は無視
+                continue
+
+            self._log("RECV:", line)
+
+            # JSON パース
+            try:
+                data = json.loads(line)
+            except json.JSONDecodeError as e:
+                raise ESP32IOProtocolError(f"Invalid JSON from ESP32: {line}") from e
+
+            # エラー応答なら例外
+            if data.get("status") == "error":
+                code = data.get("code", "UNKNOWN")
+                detail = data.get("detail", "")
+                raise ESP32IOError(f"{code}: {detail}")
+
+            # 正常応答
+            return data
+
+    def command(self, cmd: str, **kwargs: Any) -> Dict[str, Any]:
+        """
+        任意のコマンドを送信し、JSON 応答を返す低レベル API。
+
+        :param cmd: "read_dio" など
+        :param kwargs: 追加パラメータ
+        :return: ESP32 からの JSON 応答
+        """
+        req: Dict[str, Any] = {"cmd": cmd}
+        req.update(kwargs)
+        self._send(req)
+        return self._safe_recv()
+
+    # ------------------------------
+    # 基本4コマンド（公開 API）
+    # ------------------------------
+    def read_dio(self, pin_id: int) -> int:
+        """
+        デジタル入力を読む。
+
+        :param pin_id: ピン番号（ESP32 側の定義に依存）
+        :return: 0 or 1
+        """
+        res = self.command("read_dio", pin_id=pin_id)
+        value = res.get("value")
+        if not isinstance(value, int):
+            raise ESP32IOProtocolError(f"Invalid read_dio response: {res}")
+        return value
+
+    def write_dio(self, pin_id: int, value: int) -> Dict[str, Any]:
+        """
+        デジタル出力を書き込む。
+
+        :param pin_id: ピン番号
+        :param value: 0 or 1
+        :return: ESP32 の生 JSON 応答
+        """
+        return self.command("write_dio", pin_id=pin_id, value=value)
+
+    def read_adc(self, pin_id: int) -> int:
+        """
+        ADC を読む。
+
+        :param pin_id: ピン番号
+        :return: ADC 値（0〜4095 など、ESP32 側の仕様に依存）
+        """
+        res = self.command("read_adc", pin_id=pin_id)
+        value = res.get("value")
+        if not isinstance(value, int):
+            raise ESP32IOProtocolError(f"Invalid read_adc response: {res}")
+        return value
+
+    def set_pwm(self, pin_id: int, duty: int) -> Dict[str, Any]:
+        """
+        PWM デューティを設定する。
+
+        :param pin_id: ピン番号
+        :param duty: デューティ値（0〜255 など、ESP32 側の仕様に依存）
+        :return: ESP32 の生 JSON 応答
+        """
+        return self.command("set_pwm", pin_id=pin_id, duty=duty)
+    
+    def get_io_state(self):
+        """
+        ESP32 の全 I/O 状態をまとめて取得する。
+        戻り値:
+            dio_in  : list[int] (len=6)
+            dio_out : list[int] (len=6)
+            adc     : list[int] (len=2)
+            pwm     : list[int] (len=2)
+        """
+        res = self.command("get_io_state")
+
+        return {
+            "dio_in":  list(res["dio_in"]),
+            "dio_out": list(res["dio_out"]),
+            "adc":     list(res["adc"]),
+            "pwm":     list(res["pwm"]),
+        }
+
+    # ------------------------------
+    # 後片付け
+    # ------------------------------
+    def close(self) -> None:
+        """シリアルポートを閉じる"""
+        if self.ser and self.ser.is_open:
+            self.ser.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
