@@ -6,7 +6,7 @@ def main():
     print("=== ESP32IO 初回テスト ===")
 
     try:
-        esp = ESP32IO("COM3", debug=False)
+        esp = ESP32IO("COM5", debug=False)
     except serial.SerialException as e:
         print("ERROR: ESP32 に接続できませんでした。")
         print("理由:", e)
