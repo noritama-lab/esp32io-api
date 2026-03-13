@@ -1,6 +1,6 @@
 import serial, json
 
-# "COM5" の部分は、Arduino IDE で書き込みに使ったポート番号に合わせてください
+# "COM5" の部分は、ESP32-S3 のシリアルポート番号に合わせてください
 ser = serial.Serial("COM5", 115200, timeout=1)
 
 # ESP32-S3 に ping コマンドを送信

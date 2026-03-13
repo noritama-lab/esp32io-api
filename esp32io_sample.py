@@ -6,6 +6,7 @@ def main():
     print("=== ESP32IO 初回テスト ===")
 
     try:
+        # "COM5" の部分は、ESP32-S3 のシリアルポート番号に合わせてください
         esp = ESP32IO("COM5", debug=False)
     except serial.SerialException as e:
         print("ERROR: ESP32 に接続できませんでした。")

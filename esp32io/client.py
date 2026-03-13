@@ -182,6 +182,9 @@ class ESP32IO:
         """
         return self.command("set_pwm", pin_id=pin_id, duty=duty)
     
+    # ------------------------------
+    # 全データ取得コマンド（公開 API）
+    # ------------------------------
     def get_io_state(self):
         """
         ESP32 の全 I/O 状態をまとめて取得する。
