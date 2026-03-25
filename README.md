@@ -26,7 +26,10 @@ esp32io-api/
 │   ├── client.py
 │   ├── exceptions.py
 │   └── protocol.py
-├── samples.py
+├── esp32io.egg-info
+├── examples
+│   └── samples.py
+├── pyproject.toml
 ├── LICENSE
 └── README.md
 ```
@@ -109,7 +112,10 @@ esp32io-api/
 │   ├── client.py
 │   ├── exceptions.py
 │   └── protocol.py
-├── samples.py
+├── esp32io.egg-info
+├── examples
+│   └── samples.py
+├── pyproject.toml
 ├── LICENSE
 └── README.md
 ```
