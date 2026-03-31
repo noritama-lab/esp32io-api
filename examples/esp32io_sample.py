@@ -1,4 +1,4 @@
-from esp32io import ESP32IO
+from esp32io import client
 import time
 import serial
 
@@ -7,7 +7,7 @@ def main():
 
     try:
         # "COM5" の部分は、ESP32-S3 のシリアルポート番号に合わせてください
-        esp = ESP32IO("COM3", debug=False)
+        esp = client.ESP32IO("COM3", debug=False)
     except serial.SerialException as e:
         print("ERROR: ESP32 に接続できませんでした。")
         print("理由:", e)
@@ -18,15 +18,15 @@ def main():
     # 1. DIO 出力
     # ------------------------------------------------------------
     print("\n[1] DIO 出力テスト")
-    esp.write_dio(0, 1)
+    esp.set_do(0, 1)
     time.sleep(0.3)
-    esp.write_dio(0, 0)
+    esp.set_do(0, 0)
 
     # ------------------------------------------------------------
     # 2. DIO 入力
     # ------------------------------------------------------------
     print("\n[2] DIO 入力テスト")
-    dio0 = esp.read_dio(0)
+    dio0 = esp.read_di(0)
     print("dio0 =", dio0)
 
     # ------------------------------------------------------------

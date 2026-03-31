@@ -14,7 +14,7 @@ class ESP32IO:
     ESP32 と JSON ベースのシリアルプロトコルで通信するクライアント。
 
     想定プロトコル:
-      PC -> ESP32: {"cmd": "read_dio", "pin_id": 0}
+      PC -> ESP32: {"cmd": "read_di", "pin_id": 0}
       ESP32 -> PC: {"status": "ok", "value": 1}
 
       PC -> ESP32: {"cmd": "set_pwm", "pin_id": 0, "duty": 128}
@@ -124,7 +124,7 @@ class ESP32IO:
         """
         任意のコマンドを送信し、JSON 応答を返す低レベル API。
 
-        :param cmd: "read_dio" など
+        :param cmd: "read_di" など
         :param kwargs: 追加パラメータ
         :return: ESP32 からの JSON 応答
         """
@@ -136,7 +136,7 @@ class ESP32IO:
     # ------------------------------
     # 基本4コマンド（公開 API）
     # ------------------------------
-    def read_dio(self, pin_id: int) -> int:
+    def read_di(self, pin_id: int) -> int:
         """
         デジタル入力を読む。
 
@@ -146,10 +146,10 @@ class ESP32IO:
         res = self.command("read_dio", pin_id=pin_id)
         value = res.get("value")
         if not isinstance(value, int):
-            raise ESP32IOProtocolError(f"Invalid read_dio response: {res}")
+            raise ESP32IOProtocolError(f"Invalid read_di response: {res}")
         return value
 
-    def write_dio(self, pin_id: int, value: int) -> Dict[str, Any]:
+    def set_do(self, pin_id: int, value: int) -> Dict[str, Any]:
         """
         デジタル出力を書き込む。
 

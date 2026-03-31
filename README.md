@@ -36,8 +36,8 @@ esp32io-api/
 
 ### 主なメソッド
 
-- read_dio(pin_id) — デジタル入力  
-- write_dio(pin_id, value) — デジタル出力  
+- read_di(pin_id) — デジタル入力  
+- set_do(pin_id, value) — デジタル出力  
 - read_adc(pin_id) — ADC 読み取り  
 - set_pwm(pin_id, duty) — PWM 出力  
 - get_io_state() — 全 I/O 状態の取得  
@@ -122,8 +122,8 @@ esp32io-api/
 
 ### Main Methods
 
-- read_dio(pin_id) — Digital input  
-- write_dio(pin_id, value) — Digital output  
+- read_di(pin_id) — Digital input  
+- set_do(pin_id, value) — Digital output  
 - read_adc(pin_id) — Read ADC  
 - set_pwm(pin_id, duty) — PWM output  
 - get_io_state() — Get all I/O states  
