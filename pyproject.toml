@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "esp32io"
+version = "0.1.0"
+description = "ESP32IO is a Python API that turns an ESP32‑S3 into a USB‑connected I/O device."
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Noritama-Lab"},
+]
+dependencies = [
+    "pyserial>=3.5",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Hardware",
+]
+
+[project.urls]
+Repository = "https://github.com/Noritama-Lab/esp32io-api"
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["examples*", "tests*"]

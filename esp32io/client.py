@@ -143,7 +143,7 @@ class ESP32IO:
         :param pin_id: ピン番号（ESP32 側の定義に依存）
         :return: 0 or 1
         """
-        res = self.command("read_dio", pin_id=pin_id)
+        res = self.command("read_di", pin_id=pin_id)
         value = res.get("value")
         if not isinstance(value, int):
             raise ESP32IOProtocolError(f"Invalid read_di response: {res}")
@@ -157,7 +157,7 @@ class ESP32IO:
         :param value: 0 or 1
         :return: ESP32 の生 JSON 応答
         """
-        return self.command("write_dio", pin_id=pin_id, value=value)
+        return self.command("set_do", pin_id=pin_id, value=value)
 
     def read_adc(self, pin_id: int) -> int:
         """
