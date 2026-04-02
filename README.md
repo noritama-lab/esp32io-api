@@ -1,174 +1,269 @@
-# ESP32IO Python API  
+# ESP32IO Python API
+
 日本語 / English
 
 ---
 
-## 🇯🇵 ESP32IO Python API
+## 日本語
 
-ESP32IO は、ESP32‑S3 を USB で接続するだけで I/O デバイスとして扱える Python API です。  
-ESP32‑S3 側のファームウェアと組み合わせることで、JSON コマンドを意識せずに Python から I/O を安全かつ直感的に操作できます。
+ESP32IO は、ESP32-S3 を USB シリアル経由で Python から扱うための軽量クライアントです。
+ESP32 側で JSON コマンドを受け取るファームウェアと組み合わせることで、デジタル入出力、ADC、PWM をシンプルな Python API で操作できます。
 
 ### 特徴
 
-- USB シリアル経由で I/O を制御  
-- JSON ベースの通信プロトコルを API 内部で抽象化  
-- ADC / PWM / DIO（入力・出力）を Python から簡単に操作  
-- エラー処理・タイムアウト処理を統一  
-- 全 I/O 状態を取得できる get_io_state()  
-- 初回動作確認用のサンプルコード付き  
+- USB シリアル経由で ESP32-S3 と通信
+- JSON プロトコルを `ESP32IO` クラスが隠蔽
+- `ping`、DIO、ADC、PWM、全体状態取得をサポート
+- タイムアウト、プロトコル不整合、ESP32 側エラーを例外として統一処理
+- 低レベル API `command()` も用意
 
-### リポジトリ構成
+### 動作環境
 
+- Python 3.8 以上
+- `pyserial>=3.5`
+- 対応する ESP32-S3 ファームウェア
+
+### インストール
+
+開発中のローカル環境で使う場合:
+
+```bash
+pip install -e .
 ```
-esp32io-api/
+
+依存関係だけ入れる場合:
+
+```bash
+pip install -r requirements.txt
+```
+
+### クイックスタート
+
+```python
+from esp32io import ESP32IO
+
+esp = ESP32IO("COM4", debug=False, recv_timeout=2.0)
+
+print("ping =", esp.ping())
+print("di0 =", esp.read_di(0))
+print("adc0 =", esp.read_adc(0))
+
+esp.set_do(0, 1)
+esp.set_pwm(0, 128)
+
+state = esp.get_io_state()
+print(state)
+
+esp.close()
+```
+
+サンプル実行:
+
+```bash
+py -m examples.esp32io_sample
+```
+
+### API 一覧
+
+- `ESP32IO(port, baud=115200, timeout=2.0, debug=False, recv_timeout=None)`
+    シリアルポートを開いて ESP32 に接続します。
+- `ping() -> bool`
+    疎通確認を行い、`pong` 応答を検証します。
+- `read_di(pin_id) -> int`
+    デジタル入力を 0 または 1 で返します。
+- `set_do(pin_id, value) -> dict`
+    デジタル出力を設定します。
+- `read_adc(pin_id) -> int`
+    ADC 値を返します。
+- `set_pwm(pin_id, duty) -> dict`
+    PWM デューティを設定します。
+- `get_io_state() -> dict`
+    DIO、ADC、PWM の状態をまとめて返します。
+- `command(cmd, **kwargs) -> dict`
+    任意の JSON コマンドを送る低レベル API です。
+- `close() -> None`
+    シリアルポートを閉じます。
+
+### 例外
+
+- `ESP32IOError`
+    ESP32 が `status=error` を返した場合
+- `ESP32IOTimeoutError`
+    応答待ちがタイムアウトした場合
+- `ESP32IOProtocolError`
+    JSON 不正や期待しない応答を受けた場合
+
+### 想定コマンド
+
+このクライアントは、少なくとも以下のコマンドを実装したファームウェアを前提にしています。
+
+- `ping`
+- `read_di`
+- `set_do`
+- `read_adc`
+- `set_pwm`
+- `get_io_state`
+
+### プロジェクト構成
+
+```text
+.
 ├── esp32io/
 │   ├── __init__.py
 │   ├── client.py
 │   ├── exceptions.py
 │   └── protocol.py
-├── esp32io.egg-info
-├── examples
-│   └── samples.py
+├── examples/
+│   └── esp32io_sample.py
 ├── pyproject.toml
+├── requirements.txt
 ├── LICENSE
 └── README.md
 ```
 
-### 主なメソッド
+### ファームウェアについて
 
-- read_di(pin_id) — デジタル入力  
-- set_do(pin_id, value) — デジタル出力  
-- read_adc(pin_id) — ADC 読み取り  
-- set_pwm(pin_id, duty) — PWM 出力  
-- get_io_state() — 全 I/O 状態の取得  
+この Python パッケージ自体には ESP32 側ファームウェアは含まれていません。
+別途、同じ JSON コマンド仕様に従う ESP32-S3 ファームウェアを用意してください。
 
-### 使用例：ADC の値で LED の明るさを制御
-
-```python
-from esp32io import ESP32IO
-import time
-import serial
-
-def main():
-    try:
-        esp = ESP32IO("COM3", debug=False)
-        print("ESP32 に接続しました。")
-
-        while True:
-            adc_value = esp.read_adc(0)
-            duty = int(adc_value / 4095 * 255)
-            esp.set_pwm(0, duty)
-
-            print(f"ADC={adc_value}, PWM duty={duty}")
-            time.sleep(0.05)
-
-    except serial.SerialException as e:
-        print("ERROR: ESP32 に接続できませんでした。")
-        print("理由:", e)
-
-    finally:
-        try:
-            esp.set_pwm(0, 0)
-        except:
-            pass
-        print("終了しました。PWM を停止しました。")
-
-if __name__ == "__main__":
-    main()
-```
-
-### ESP32‑S3 ファームウェア
-
-この API は、以下のファームウェアと連携して動作します：  
+ファームウェア:  
 https://github.com/noritama-lab/esp32io-firmware
 
 ### ライセンス
 
-MIT License  
+MIT License
+
 Copyright (c) 2026 Noritama-Lab
 
 ---
 
-## 🇺🇸 ESP32IO Python API
+## English
 
-ESP32IO is a Python API that turns an ESP32‑S3 into a USB‑connected I/O device.  
-With the corresponding firmware, you can control I/O safely and intuitively without handling JSON commands directly.
+ESP32IO is a lightweight Python client for controlling an ESP32-S3 over USB serial.
+When paired with firmware that accepts JSON commands, it provides a small and practical API for digital I/O, ADC, and PWM control.
 
 ### Features
 
-- I/O control over USB serial  
-- JSON protocol fully abstracted inside the API  
-- Easy access to ADC / PWM / DIO (input/output)  
-- Unified error handling and timeout management  
-- get_io_state() for full I/O monitoring  
-- Includes sample code for quick testing  
+- USB serial communication with ESP32-S3
+- JSON protocol hidden behind the `ESP32IO` client
+- Support for `ping`, DIO, ADC, PWM, and full I/O state reads
+- Unified exception handling for device errors, timeouts, and protocol issues
+- Includes a low-level `command()` API for custom commands
 
-### Repository Structure
+### Requirements
 
+- Python 3.8+
+- `pyserial>=3.5`
+- Compatible ESP32-S3 firmware
+
+### Installation
+
+For local development:
+
+```bash
+pip install -e .
 ```
-esp32io-api/
+
+To install dependencies only:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Quick Start
+
+```python
+from esp32io import ESP32IO
+
+esp = ESP32IO("COM4", debug=False, recv_timeout=2.0)
+
+print("ping =", esp.ping())
+print("di0 =", esp.read_di(0))
+print("adc0 =", esp.read_adc(0))
+
+esp.set_do(0, 1)
+esp.set_pwm(0, 128)
+
+state = esp.get_io_state()
+print(state)
+
+esp.close()
+```
+
+Run the sample:
+
+```bash
+py -m examples.esp32io_sample
+```
+
+### API Summary
+
+- `ESP32IO(port, baud=115200, timeout=2.0, debug=False, recv_timeout=None)`
+    Opens the serial port and prepares the client.
+- `ping() -> bool`
+    Verifies connectivity by checking for a `pong` response.
+- `read_di(pin_id) -> int`
+    Reads a digital input and returns `0` or `1`.
+- `set_do(pin_id, value) -> dict`
+    Sets a digital output.
+- `read_adc(pin_id) -> int`
+    Reads an ADC value.
+- `set_pwm(pin_id, duty) -> dict`
+    Sets a PWM duty cycle.
+- `get_io_state() -> dict`
+    Returns DIO, ADC, and PWM state in one response.
+- `command(cmd, **kwargs) -> dict`
+    Low-level API for sending custom JSON commands.
+- `close() -> None`
+    Closes the serial port.
+
+### Exceptions
+
+- `ESP32IOError`
+    Raised when the device returns `status=error`
+- `ESP32IOTimeoutError`
+    Raised when waiting for a response times out
+- `ESP32IOProtocolError`
+    Raised for invalid JSON or unexpected responses
+
+### Expected Firmware Commands
+
+The client expects firmware that implements at least these commands:
+
+- `ping`
+- `read_di`
+- `set_do`
+- `read_adc`
+- `set_pwm`
+- `get_io_state`
+
+### Project Structure
+
+```text
+.
 ├── esp32io/
 │   ├── __init__.py
 │   ├── client.py
 │   ├── exceptions.py
 │   └── protocol.py
-├── esp32io.egg-info
-├── examples
-│   └── samples.py
+├── examples/
+│   └── esp32io_sample.py
 ├── pyproject.toml
+├── requirements.txt
 ├── LICENSE
 └── README.md
 ```
 
-### Main Methods
+### Firmware
 
-- read_di(pin_id) — Digital input  
-- set_do(pin_id, value) — Digital output  
-- read_adc(pin_id) — Read ADC  
-- set_pwm(pin_id, duty) — PWM output  
-- get_io_state() — Get all I/O states  
+This repository contains the Python package only.
+Prepare separate ESP32-S3 firmware that follows the same JSON command protocol.
 
-### Example: Control LED brightness using ADC input
-
-```python
-from esp32io import ESP32IO
-import time
-import serial
-
-def main():
-    try:
-        esp = ESP32IO("COM3", debug=False)
-        print("Connected to ESP32.")
-
-        while True:
-            adc_value = esp.read_adc(0)
-            duty = int(adc_value / 4095 * 255)
-            esp.set_pwm(0, duty)
-
-            print(f"ADC={adc_value}, PWM duty={duty}")
-            time.sleep(0.05)
-
-    except serial.SerialException as e:
-        print("ERROR: Could not connect to ESP32.")
-        print("Reason:", e)
-
-    finally:
-        try:
-            esp.set_pwm(0, 0)
-        except:
-            pass
-        print("Finished. PWM stopped.")
-
-if __name__ == "__main__":
-    main()
-```
-
-### ESP32‑S3 Firmware
-
-This API works with the following firmware:  
+Firmware repository:  
 https://github.com/noritama-lab/esp32io-firmware
 
 ### License
 
-MIT License  
+MIT License
+
 Copyright (c) 2026 Noritama-Lab
