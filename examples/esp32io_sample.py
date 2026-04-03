@@ -46,6 +46,8 @@ def main():
     # 5. PWM 出力
     # ------------------------------------------------------------
     print("\n[5] PWM 出力テスト")
+    pwm_config = esp.get_pwm_config()
+    print("pwm config =", pwm_config)
     esp.set_pwm(0, 128)
     time.sleep(0.5)
     esp.set_pwm(0, 0)

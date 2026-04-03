@@ -12,7 +12,8 @@ from .exceptions import (
 class ESP32IO:
     """
     ESP32 と JSON ベースのシリアルプロトコルで通信するクライアント。
-    コマンド（read_di, set_do, read_adc, set_pwm, ping, get_io_state）をメソッドとして提供。    
+    コマンド（read_di, set_do, read_adc, set_pwm, get_pwm_config,
+    set_pwm_config, ping, get_io_state）をメソッドとして提供。
     """
 
     def __init__(
@@ -128,7 +129,7 @@ class ESP32IO:
         return self._safe_recv()
 
     # ------------------------------
-    # 基本5コマンド（公開 API）
+    # 基本コマンド（公開 API）
     # ------------------------------
     def read_di(self, pin_id: int) -> int:
         """
@@ -175,6 +176,34 @@ class ESP32IO:
         :return: ESP32 の生 JSON 応答
         """
         return self.command("set_pwm", pin_id=pin_id, duty=duty)
+
+    def get_pwm_config(self) -> Dict[str, int]:
+        """
+        PWM の周波数と分解能を取得する。
+
+        :return: {"freq": 周波数, "res": 分解能}
+        """
+        response = self.command("get_pwm_config")
+        freq = response.get("freq")
+        resolution = response.get("res")
+        if not isinstance(freq, int) or not isinstance(resolution, int):
+            raise ESP32IOProtocolError(f"Invalid get_pwm_config response: {response}")
+        return {"freq": freq, "res": resolution}
+
+    def set_pwm_config(self, freq: int, res: int) -> Dict[str, int]:
+        """
+        PWM の周波数と分解能を設定する。
+
+        :param freq: 周波数。ファームウェア仕様では 1〜20000。
+        :param res: 分解能ビット数。ファームウェア仕様では 1〜16。
+        :return: {"freq": 周波数, "res": 分解能}
+        """
+        response = self.command("set_pwm_config", freq=freq, res=res)
+        actual_freq = response.get("freq")
+        actual_res = response.get("res")
+        if not isinstance(actual_freq, int) or not isinstance(actual_res, int):
+            raise ESP32IOProtocolError(f"Invalid set_pwm_config response: {response}")
+        return {"freq": actual_freq, "res": actual_res}
 
     def ping(self) -> bool:
         """
