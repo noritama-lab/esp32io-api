@@ -1,13 +1,13 @@
-from esp32io import client
+from esp32io_net import ESP32S3IOSerial
 import time
 import serial
 
 def main():
-    print("=== ESP32IO 初回テスト ===")
+    print("=== ESP32IO シリアルサンプル ===")
 
     try:
         # "COM9" の部分は、ESP32-S3 のシリアルポート番号に合わせてください
-        esp = client.ESP32IO("COM9", debug=False)
+        esp = ESP32S3IOSerial("COM9", debug=False)
     except serial.SerialException as e:
         print("ERROR: ESP32 に接続できませんでした。")
         print("理由:", e)
@@ -73,7 +73,7 @@ def main():
     print("pwm[0]    =", pwm[0])
 
     esp.close()
-    print("\n=== 完了：ESP32IO の基本動作が確認できました ===")
+    print("\n=== 完了：ESP32IO の基本動作が確認できました (シリアル) ===")
 
 
 if __name__ == "__main__":

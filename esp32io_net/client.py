@@ -130,7 +130,7 @@ class ESP32S3IONet(ESP32S3IOBase):
                 timeout=self.timeout,
                 allow_redirects=False
             )
-            self._log(f"HTTP {payload} -> {response.status_code}")
+            self._log(f"HTTP POST {self.base_url} {payload} -> {response.status_code}")
             
             # HTTPステータスに関わらず、まずJSONとしてパースを試みる
             # デバイスは400エラー時も詳細なJSONを返すため
@@ -169,6 +169,9 @@ class ESP32S3IOSerial(ESP32S3IOBase):
     def _execute(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         cmd_name = payload.get("cmd", "unknown")
         try:
+            # コマンド送信前に受信バッファをクリアし、古いログ等の混入を防ぐ
+            self.ser.reset_input_buffer()
+
             # JSON送信
             line = json.dumps(payload, separators=(",", ":")) + "\n"
             self._log(f"SEND: {line.strip()}")
@@ -181,13 +184,25 @@ class ESP32S3IOSerial(ESP32S3IOBase):
                 resp_line = self.ser.readline().decode("utf-8", errors="replace").strip()
                 if not resp_line:
                     continue
-                if resp_line.startswith("{"):
-                    self._log(f"RECV: {resp_line}")
-                    return self._process_response(json.loads(resp_line), cmd_name)
+                
+                # JSON らしき開始文字がない場合はログとみなしてスキップ
+                if not resp_line.startswith("{"):
+                    self._log(f"SKIP (Log): {resp_line}")
+                    continue
+
+                # JSONとしてパースを試みる
+                try:
+                    data = json.loads(resp_line)
+                    self._log(f"RECV (JSON): {resp_line}")
+                    return self._process_response(data, cmd_name)
+                except json.JSONDecodeError:
+                    # { で始まっていても不正な形式ならスキップして次を待つ
+                    self._log(f"SKIP (Invalid JSON): {resp_line}")
+                    continue
             
             raise ESP32S3IOSerialError(f"Timeout waiting for response to '{cmd_name}'")
-        except (serial.SerialException, json.JSONDecodeError) as e:
-            raise ESP32S3IOProtocolError(f"Serial communication or JSON error: {e}")
+        except serial.SerialException as e:
+            raise ESP32S3IOSerialError(f"Serial communication error: {e}")
 
     def close(self):
         if hasattr(self, "ser") and self.ser.is_open:

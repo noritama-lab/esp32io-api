@@ -1,17 +1,20 @@
-from esp32io import client
+from esp32io_net import ESP32S3IONet
 import time
-import serial
+import requests # For catching network-specific exceptions
 
 def main():
-    print("=== ESP32IO 初回テスト ===")
+    print("=== ESP32IO Wi-Fi サンプル ===")
+
+    # ESP32のIPアドレスに合わせてください
+    # 例: esp = ESP32S3IONet("192.168.1.100", debug=True)
+    IP_ADDRESS = "192.168.0.20" # ここを実際のIPアドレスに置き換えてください
 
     try:
-        # "COM9" の部分は、ESP32-S3 のシリアルポート番号に合わせてください
-        esp = client.ESP32IO("COM9", debug=False)
-    except serial.SerialException as e:
+        esp = ESP32S3IONet(IP_ADDRESS, debug=False)
+    except requests.exceptions.RequestException as e:
         print("ERROR: ESP32 に接続できませんでした。")
         print("理由:", e)
-        print("COM ポートが正しいか確認してください。")
+        print("IPアドレスが正しいか、ESP32がネットワークに接続されているか確認してください。")
         return
 
     # ------------------------------------------------------------
@@ -72,8 +75,7 @@ def main():
     print("adc[1]    =", adc[1])
     print("pwm[0]    =", pwm[0])
 
-    esp.close()
-    print("\n=== 完了：ESP32IO の基本動作が確認できました ===")
+    print("\n=== 完了：ESP32IO の基本動作が確認できました (Wi-Fi) ===")
 
 
 if __name__ == "__main__":
