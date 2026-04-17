@@ -11,6 +11,7 @@ CMD_GET_PWM_CONFIG = "get_pwm_config"
 CMD_SET_PWM_CONFIG = "set_pwm_config"
 CMD_SET_RGB = "set_rgb"
 CMD_LED_OFF = "led_off"
+CMD_SET_LED_MODE = "set_led_mode"
 CMD_GET_LED_STATE = "get_led_state"
 CMD_HELP = "help"
 
@@ -26,6 +27,7 @@ ALL_COMMANDS = (
     CMD_SET_PWM_CONFIG,
     CMD_SET_RGB,
     CMD_LED_OFF,
+    CMD_SET_LED_MODE,
     CMD_GET_LED_STATE,
     CMD_HELP,
 )

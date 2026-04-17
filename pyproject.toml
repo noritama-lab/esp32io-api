@@ -33,5 +33,5 @@ classifiers = [
 Repository = "https://github.com/Noritama-Lab/esp32io-api"
 
 [tool.setuptools.packages.find]
-where = ["."]
-exclude = ["examples*", "tests*"]
+include = ["esp32io"]
+exclude = ["esp32io_net*", "examples*", "tests*"]

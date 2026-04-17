@@ -72,36 +72,39 @@ class ESP32S3IOBase:
             raise ESP32S3IOProtocolError(f"Invalid read_adc response: {res}")
         return val
 
-    def set_pwm(self, pin_id: int, duty: int) -> int:
+    def set_pwm(self, pin_id: int, duty: int) -> Dict[str, Any]:
         """PWM出力の設定"""
         res = self.command(protocol.CMD_SET_PWM, pin_id=pin_id, duty=duty)
-        return res["duty"]
+        return res
 
     def get_pwm_config(self) -> Dict[str, int]:
         """現在のPWM周波数と分解能を取得"""
         res = self.command(protocol.CMD_GET_PWM_CONFIG)
-        if not isinstance(res.get("freq"), int) or not isinstance(res.get("res"), int):
+        if not isinstance(res.get("freq"), int) or not isinstance(res.get("res"), int) or not isinstance(res.get("max_duty"), int):
             raise ESP32S3IOProtocolError(f"Invalid get_pwm_config response: {res}")
-        return {"freq": res["freq"], "res": res["res"]}
+        return {"freq": res["freq"], "res": res["res"], "max_duty": res["max_duty"]}
 
-    def set_pwm_config(self, freq: int, res_bit: int) -> Dict[str, int]:
+    def set_pwm_config(self, freq: int, res_bit: int) -> bool:
         """PWMの周波数と分解能を動的に変更"""
         res = self.command(protocol.CMD_SET_PWM_CONFIG, freq=freq, res=res_bit)
-        if not isinstance(res.get("freq"), int) or not isinstance(res.get("res"), int):
-            raise ESP32S3IOProtocolError(f"Invalid set_pwm_config response: {res}")
-        return {"freq": res["freq"], "res": res["res"]}
+        return res.get("status") == "ok"
 
     def set_rgb(self, r: int, g: int, b: int, brightness: Optional[int] = None) -> bool:
         """内蔵RGB LEDの制御"""
-        payload = {"cmd": protocol.CMD_SET_RGB, "r": r, "g": g, "b": b}
+        kwargs = {"r": r, "g": g, "b": b}
         if brightness is not None:
-            payload["brightness"] = brightness
-        res = self._execute(payload) # 直接 execute
+            kwargs["brightness"] = brightness
+        res = self.command(protocol.CMD_SET_RGB, **kwargs)
         return res.get("status") == "ok"
 
     def led_off(self) -> bool:
-        """RGB LEDの消灯（ステータス表示モードへの復帰）"""
+        """RGB LEDの消灯"""
         res = self.command(protocol.CMD_LED_OFF)
+        return res.get("status") == "ok"
+
+    def set_led_mode(self, mode: str) -> bool:
+        """LEDの動作モードを設定 ('status' または 'manual')"""
+        res = self.command(protocol.CMD_SET_LED_MODE, mode=mode)
         return res.get("status") == "ok"
 
     def get_led_state(self) -> Dict[str, Any]:

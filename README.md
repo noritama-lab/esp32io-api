@@ -6,14 +6,14 @@
 
 ## 日本語
 
-ESP32IO は、ESP32-S3 を USB シリアル経由で Python から扱うための軽量クライアントです。
-ESP32 側で JSON コマンドを受け取るファームウェアと組み合わせることで、デジタル入出力、ADC、PWM をシンプルな Python API で操作できます。
+ESP32IO は、ESP32-S3 を USB シリアルまたは Wi-Fi (HTTP) 経由で Python から扱うための軽量クライアントです。
+ESP32 側で JSON コマンドを受け取るファームウェアと組み合わせることで、DIO、ADC、PWM、および内蔵 RGB LED をシンプルな Python API で操作できます。
 
 ### 特徴
 
-- USB シリアル経由で ESP32-S3 と通信
-- JSON プロトコルを `ESP32IO` クラスが隠蔽
-- `ping`、DIO、ADC、PWM、全体状態取得をサポート
+- USB シリアルおよび Wi-Fi (HTTP) 経由での通信をサポート
+- JSON プロトコルを `ESP32IO` または `ESP32S3IONet/Serial` クラスが隠蔽
+- DIO、ADC、PWM、内蔵 RGB LED、システム状態の取得をサポート
 - PWM 周波数と分解能の取得・更新をサポート
 - タイムアウト、プロトコル不整合、ESP32 側エラーを例外として統一処理
 - 低レベル API `command()` も用意
@@ -78,15 +78,25 @@ py -m examples.esp32io_sample
 - `read_adc(pin_id) -> int`
     ADC 値を返します。
 - `set_pwm(pin_id, duty) -> dict`
-    PWM デューティを設定します。
+    PWM デューティを設定し、適用された値を返します。
 - `get_pwm_config() -> dict`
-    PWM の周波数 (`freq`) と分解能 (`res`) を返します。
-- `set_pwm_config(freq, res) -> dict`
-    PWM の周波数と分解能を設定して、適用後の値を返します。
+    PWM の周波数 (`freq`)、分解能 (`res`)、および現在の解像度での最大値 (`max_duty`) を返します。
+- `set_pwm_config(freq, res) -> bool`
+    PWM の周波数と分解能を設定します。
+- `set_led_mode(mode) -> bool`
+    LED の動作モード (`status` または `manual`) を設定します。
+- `set_rgb(r, g, b, brightness) -> bool`
+    内蔵 RGB LED の色と明るさを設定します。
+- `led_off() -> bool`
+    LED を消灯します。
 - `get_io_state() -> dict`
     DIO、ADC、PWM の状態をまとめて返します。
+- `get_status() -> dict`
+    デバイスの稼働時間、ヒープメモリ、ネットワーク状態などを取得します。
 - `command(cmd, **kwargs) -> dict`
     任意の JSON コマンドを送る低レベル API です。
+- `help() -> list`
+    デバイスがサポートしているコマンド一覧を返します。
 - `close() -> None`
     シリアルポートを閉じます。
 
@@ -117,6 +127,11 @@ py -m examples.esp32io_sample
 ```text
 .
 ├── esp32io/
+│   ├── __init__.py
+│   ├── client.py
+│   ├── exceptions.py
+│   └── protocol.py
+├── esp32io_net/
 │   ├── __init__.py
 │   ├── client.py
 │   ├── exceptions.py
@@ -258,6 +273,11 @@ The client expects firmware that implements at least these commands:
 ```text
 .
 ├── esp32io/
+│   ├── __init__.py
+│   ├── client.py
+│   ├── exceptions.py
+│   └── protocol.py
+├── esp32io_net/
 │   ├── __init__.py
 │   ├── client.py
 │   ├── exceptions.py

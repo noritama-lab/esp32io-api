@@ -181,29 +181,26 @@ class ESP32IO:
         """
         PWM の周波数と分解能を取得する。
 
-        :return: {"freq": 周波数, "res": 分解能}
+        :return: {"freq": 周波数, "res": 分解能, "max_duty": 最大値}
         """
         response = self.command("get_pwm_config")
         freq = response.get("freq")
         resolution = response.get("res")
-        if not isinstance(freq, int) or not isinstance(resolution, int):
+        max_duty = response.get("max_duty")
+        if not isinstance(freq, int) or not isinstance(resolution, int) or not isinstance(max_duty, int):
             raise ESP32IOProtocolError(f"Invalid get_pwm_config response: {response}")
-        return {"freq": freq, "res": resolution}
+        return {"freq": freq, "res": resolution, "max_duty": max_duty}
 
-    def set_pwm_config(self, freq: int, res: int) -> Dict[str, int]:
+    def set_pwm_config(self, freq: int, res: int) -> bool:
         """
         PWM の周波数と分解能を設定する。
 
         :param freq: 周波数。ファームウェア仕様では 1〜20000。
         :param res: 分解能ビット数。ファームウェア仕様では 1〜16。
-        :return: {"freq": 周波数, "res": 分解能}
+        :return: 設定に成功した場合は True
         """
         response = self.command("set_pwm_config", freq=freq, res=res)
-        actual_freq = response.get("freq")
-        actual_res = response.get("res")
-        if not isinstance(actual_freq, int) or not isinstance(actual_res, int):
-            raise ESP32IOProtocolError(f"Invalid set_pwm_config response: {response}")
-        return {"freq": actual_freq, "res": actual_res}
+        return response.get("status") == "ok"
 
     def ping(self) -> bool:
         """
