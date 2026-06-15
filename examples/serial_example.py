@@ -1,7 +1,7 @@
 # USB シリアル接続
 from esp32io import ESP32S3IOSerial
 # COM4は環境によって異なります。適切なポートを指定してください。
-esp = ESP32S3IOSerial("COM4", debug=False)
+esp = ESP32S3IOSerial("COM11", debug=False)
 
 print("ping =", esp.ping())
 print("di0 =", esp.read_di(0))

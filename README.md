@@ -12,8 +12,9 @@ ESP32 側で JSON コマンドを受け取るファームウェアと組み合�
 ### 特徴
 
 - USB シリアルおよび Wi-Fi (HTTP) 経由での通信を単一パッケージでサポート
-- JSON プロトコルを `ESP32IOSerial` および `ESP32IONet` クラスが隠蔽
-- DIO、ADC、PWM、内蔵 RGB LED、システム状態の取得をサポート
+- JSON プロトコルを `ESP32S3IOSerial` および `ESP32S3IONet` クラスが隠蔽
+- DIO、ADC、PWM、内蔵 RGB LED、システム状態の取得
+- I2C バススキャン、汎用リード/ライト、特定センサー（BME280等）の一括取得、OLED 制御をサポート
 - PWM 周波数と分解能の取得・更新をサポート
 - 接続エラー、タイムアウト、プロトコル不整合、ESP32 側エラーなど 5 つの例外を定義
 - 低レベル API `command()` も用意
@@ -22,6 +23,7 @@ ESP32 側で JSON コマンドを受け取るファームウェアと組み合�
 
 - Python 3.8 以上
 - `pyserial>=3.5`
+- `requests>=2.25.0`
 - 対応する ESP32-S3 ファームウェア
 
 ### インストール
@@ -43,18 +45,30 @@ pip install -r requirements.txt
 **USB シリアル接続:**
 
 ```python
-from esp32io import ESP32IOSerial
+from esp32io import ESP32S3IOSerial
 
-esp = ESP32IOSerial("COM4", debug=False)
+esp = ESP32S3IOSerial("COM4", debug=False)
+
+print("ping =", esp.ping())
+print("di0 =", esp.read_di(0))
+print("adc0 =", esp.read_adc(0))
+print("pwm config =", esp.get_pwm_config())
+
+esp.set_do(0, 1)
+esp.set_pwm(0, 128)
+
+state = esp.get_io_state()
+print(state)
+
+esp.close()  # 通信の終了
 ```
 
 **Wi-Fi (HTTP) 接続:**
 
 ```python
-from esp32io import ESP32IONet
+from esp32io import ESP32S3IONet
 
-esp = ESP32IONet("192.168.1.10", debug=False)
-```
+esp = ESP32S3IONet("192.168.1.10", debug=False)
 
 print("ping =", esp.ping())
 print("di0 =", esp.read_di(0))
@@ -78,20 +92,20 @@ py -m examples.serial_example
 
 ### API 一覧
 
-- `ESP32IOSerial(port, baud=115200, timeout=2.0, debug=False, recv_timeout=None)`
+- `ESP32S3IOSerial(port, baud=115200, timeout=2.0, debug=False, recv_timeout=None)`
     USB シリアル経由で ESP32 に接続します。
-- `ESP32IONet(address, timeout=2.0, debug=False)`
+- `ESP32S3IONet(address, timeout=2.0, debug=False)`
     Wi-Fi (HTTP) 経由で ESP32 に接続します。`address` は IP アドレスまたはホスト名です。
 - `ping() -> bool`
     疎通確認を行い、`pong` 応答を検証します。
 - `read_di(pin_id) -> int`
     デジタル入力を 0 または 1 で返します。
-- `set_do(pin_id, value) -> dict`
+- `set_do(pin_id, value) -> bool`
     デジタル出力を設定します。
 - `read_adc(pin_id) -> int`
     ADC 値を返します。
-- `set_pwm(pin_id, duty) -> dict`
-    PWM デューティを設定し、適用された値を返します。
+- `set_pwm(pin_id, duty) -> bool`
+    PWM デューティを設定します。
 - `get_pwm_config() -> dict`
     PWM の周波数 (`freq`)、分解能 (`res`)、および現在の解像度での最大値 (`max_duty`) を返します。
 - `set_pwm_config(freq, res) -> bool`
@@ -102,6 +116,18 @@ py -m examples.serial_example
     内蔵 RGB LED の色と明るさを設定します。
 - `led_off() -> bool`
     LED を消灯します。
+- `get_led_state() -> dict`
+    現在の LED 設定値を取得します。
+- `i2c_scan() -> list`
+    接続されている I2C デバイスのアドレス一覧を返します。
+- `i2c_read(addr, length) -> list`
+    指定したアドレスからデータを読み取ります。
+- `i2c_write(addr, data) -> bool`
+    指定したアドレスにデータを書き込みます。
+- `get_sensors() -> dict`
+    BME280, MPU6050, VL53L0X などの接続済みセンサーの値を一括取得します。
+- `set_oled(text, x, y, size, clear) -> bool`
+    SSD1306 OLED ディスプレイにテキストを表示します。
 - `get_io_state() -> dict`
     DIO、ADC、PWM の状態をまとめて返します。
 - `get_status() -> dict`
@@ -115,16 +141,14 @@ py -m examples.serial_example
 
 ### 例外
 
-- `ESP32IOError` (Base)
+- `ESP32S3IOError` (Base)
     すべての例外の基底クラス
-- `ESP32IOConnectionError`
-    シリアルポートや HTTP 接続の失敗
-- `ESP32IOTimeoutError`
-    応答待ちがタイムアウトした場合
-- `ESP32IOProtocolError`
+- `ESP32S3IONetworkError` / `ESP32S3IOSerialError`
+    ネットワークまたはシリアル通信の失敗
+- `ESP32S3IOProtocolError`
     JSON 不正や期待しない応答を受けた場合
-- `ESP32IOCommandError`
-    ESP32 が `status=error` を返した場合（コマンド実行失敗）
+- `ESP32S3IODeviceError`
+    ESP32 が `status=error` を返した場合
 
 ### 想定コマンド
 
@@ -137,9 +161,16 @@ py -m examples.serial_example
 - `set_pwm`
 - `get_pwm_config`
 - `set_pwm_config`
+- `led_off`
+- `get_led_state`
 - `set_led_mode`
 - `set_rgb`
 - `get_io_state`
+- `i2c_scan`
+- `i2c_read`
+- `i2c_write`
+- `get_sensors`
+- `set_oled`
 - `get_status`
 - `help`
 
@@ -149,11 +180,12 @@ py -m examples.serial_example
 .
 ├── esp32io/
 │   ├── __init__.py
-│   ├── client.py        # ESP32IOSerial & ESP32IONet
+│   ├── client.py        # ESP32S3IOSerial & ESP32S3IONet
 │   ├── exceptions.py    # Unified exceptions
 │   └── protocol.py      # JSON Protocol logic
 ├── examples/
 │   ├── serial_example.py
+│   ├── i2c_example.py
 │   └── wifi_example.py
 ├── pyproject.toml
 ├── requirements.txt
@@ -184,8 +216,9 @@ When paired with firmware that accepts JSON commands, it provides a small and pr
 
 ### Features
 - Support for both USB serial and Wi-Fi (HTTP) communication in a single package
-- JSON protocol abstracted by `ESP32IOSerial` and `ESP32IONet` classes
+- JSON protocol abstracted by `ESP32S3IOSerial` and `ESP32S3IONet` classes
 - Support for `ping`, DIO, ADC, PWM, and full I/O state reads
+- Support for I2C scanning, raw read/write, sensor batch reads, and OLED control
 - Support for built-in RGB LED control and system status retrieval
 - Support for reading and updating PWM frequency and resolution
 - Unified exception handling for device errors, timeouts, and protocol issues
@@ -217,18 +250,30 @@ pip install -r requirements.txt
 **Via USB Serial:**
 
 ```python
-from esp32io import ESP32IOSerial
+from esp32io import ESP32S3IOSerial
 
-esp = ESP32IOSerial("COM4", debug=False)
+esp = ESP32S3IOSerial("COM4", debug=False)
+
+print("ping =", esp.ping())
+print("di0 =", esp.read_di(0))
+print("adc0 =", esp.read_adc(0))
+print("pwm config =", esp.get_pwm_config())
+
+esp.set_do(0, 1)
+esp.set_pwm(0, 128)
+
+state = esp.get_io_state()
+print(state)
+
+esp.close()  # End communication
 ```
 
 **Via Wi-Fi (HTTP):**
 
 ```python
-from esp32io import ESP32IONet
+from esp32io import ESP32S3IONet
 
-esp = ESP32IONet("192.168.1.10", debug=False)
-```
+esp = ESP32S3IONet("192.168.1.10", debug=False)
 
 print("ping =", esp.ping())
 print("di0 =", esp.read_di(0))
@@ -247,25 +292,25 @@ esp.close()  # End communication
 Run the sample:
 
 ```bash
-py -m examples.esp32io_sample
+py -m examples.serial_example
 ```
 
 ### API Summary
 
-- `ESP32IOSerial(port, baud=115200, timeout=2.0, debug=False, recv_timeout=None)`
+- `ESP32S3IOSerial(port, baud=115200, timeout=2.0, debug=False, recv_timeout=None)`
     Connects to the ESP32 via USB serial.
-- `ESP32IONet(address, timeout=2.0, debug=False)`
+- `ESP32S3IONet(address, timeout=2.0, debug=False)`
     Connects to the ESP32 via Wi-Fi (HTTP). `address` is the IP or hostname.
 - `ping() -> bool`
     Verifies connectivity by checking for a `pong` response.
 - `read_di(pin_id) -> int`
     Reads a digital input and returns `0` or `1`.
-- `set_do(pin_id, value) -> dict`
+- `set_do(pin_id, value) -> bool`
     Sets a digital output.
 - `read_adc(pin_id) -> int`
     Reads an ADC value.
-- `set_pwm(pin_id, duty) -> dict`
-    Sets a PWM duty cycle and returns the applied value.
+- `set_pwm(pin_id, duty) -> bool`
+    Sets a PWM duty cycle.
 - `get_pwm_config() -> dict`
     Returns PWM frequency (`freq`), resolution (`res`), and maximum duty value (`max_duty`).
 - `set_pwm_config(freq, res) -> bool`
@@ -276,6 +321,18 @@ py -m examples.esp32io_sample
     Sets the color and brightness of the built-in RGB LED.
 - `led_off() -> bool`
     Turns off the LED.
+- `get_led_state() -> dict`
+    Retrieves the current LED configuration.
+- `i2c_scan() -> list`
+    Returns a list of connected I2C device addresses.
+- `i2c_read(addr, length) -> list`
+    Reads data from a specified I2C address.
+- `i2c_write(addr, data) -> bool`
+    Writes data to a specified I2C address.
+- `get_sensors() -> dict`
+    Retrieves values from BME280, MPU6050, VL53L0X sensors in one go.
+- `set_oled(text, x, y, size, clear) -> bool`
+    Displays text on an SSD1306 OLED display.
 - `get_io_state() -> dict`
     Returns DIO, ADC, and PWM state in one response.
 - `get_status() -> dict`
@@ -289,16 +346,14 @@ py -m examples.esp32io_sample
 
 ### Exceptions
 
-- `ESP32IOError` (Base)
+- `ESP32S3IOError` (Base)
     Base class for all exceptions
-- `ESP32IOConnectionError`
-    Raised for serial port or HTTP connection failures
-- `ESP32IOTimeoutError`
-    Raised when waiting for a response times out
-- `ESP32IOProtocolError`
+- `ESP32S3IONetworkError` / `ESP32S3IOSerialError`
+    Raised for connectivity failures
+- `ESP32S3IOProtocolError`
     Raised for invalid JSON or unexpected responses
-- `ESP32IOCommandError`
-    Raised when the device returns `status=error` (Command failure)
+- `ESP32S3IODeviceError`
+    Raised when the device returns `status=error`
 
 ### Expected Firmware Commands
 
@@ -311,9 +366,16 @@ The client expects firmware that implements at least these commands:
 - `set_pwm`
 - `get_pwm_config`
 - `set_pwm_config`
+- `led_off`
+- `get_led_state`
 - `set_led_mode`
 - `set_rgb`
 - `get_io_state`
+- `i2c_scan`
+- `i2c_read`
+- `i2c_write`
+- `get_sensors`
+- `set_oled`
 - `get_status`
 - `help`
 
@@ -323,11 +385,12 @@ The client expects firmware that implements at least these commands:
 .
 ├── esp32io/
 │   ├── __init__.py
-│   ├── client.py        # ESP32IOSerial & ESP32IONet
+│   ├── client.py        # ESP32S3IOSerial & ESP32S3IONet
 │   ├── exceptions.py    # Unified exceptions
 │   └── protocol.py      # JSON Protocol logic
 ├── examples/
 │   ├── serial_example.py
+│   ├── i2c_example.py
 │   └── wifi_example.py
 ├── pyproject.toml
 ├── requirements.txt

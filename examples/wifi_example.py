@@ -1,7 +1,7 @@
 # Wi-Fi (HTTP) 接続
 from esp32io import ESP32S3IONet
 # 192.168.1.10はESP32のIPアドレスに置き換えてください。
-esp = ESP32S3IONet("172.20.10.14", debug=False)
+esp = ESP32S3IONet("192.168.0.19", debug=False)
 
 print("ping =", esp.ping())
 print("di0 =", esp.read_di(0))

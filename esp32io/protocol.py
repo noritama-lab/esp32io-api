@@ -14,6 +14,11 @@ CMD_LED_OFF = "led_off"
 CMD_SET_LED_MODE = "set_led_mode"
 CMD_GET_LED_STATE = "get_led_state"
 CMD_HELP = "help"
+CMD_I2C_SCAN = "i2c_scan"
+CMD_I2C_READ = "i2c_read"
+CMD_I2C_WRITE = "i2c_write"
+CMD_GET_SENSORS = "get_sensors"
+CMD_SET_OLED = "set_oled"
 
 ALL_COMMANDS = (
     CMD_PING,
@@ -30,4 +35,9 @@ ALL_COMMANDS = (
     CMD_SET_LED_MODE,
     CMD_GET_LED_STATE,
     CMD_HELP,
+    CMD_I2C_SCAN,
+    CMD_I2C_READ,
+    CMD_I2C_WRITE,
+    CMD_GET_SENSORS,
+    CMD_SET_OLED,
 )

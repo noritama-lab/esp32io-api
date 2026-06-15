@@ -59,7 +59,7 @@ class ESP32S3IOBase(ABC):
         """DI, DO, ADC, PWM の全状態を一括取得"""
         res = self.command(protocol.CMD_GET_IO_STATE)
         return {
-            "dio_in":  list(res["dio_in"]),
+            "dio_in":  list(res.get("dio_in", [])),
             "dio_out": list(res.get("dio_out", [])),
             "adc":     list(res.get("adc", [])),
             "pwm":     list(res.get("pwm", [])),
@@ -92,15 +92,14 @@ class ESP32S3IOBase(ABC):
             raise ESP32S3IOProtocolError(f"Invalid read_adc response: {res}")
         return val
 
-    def set_pwm(self, pin_id: int, duty: int) -> Dict[str, Any]:
+    def set_pwm(self, pin_id: int, duty: int) -> bool:
         """PWM出力の設定"""
         if not (0 <= duty):
             raise ValueError("duty must be 0 or greater")
         res = self.command(protocol.CMD_SET_PWM, pin_id=pin_id, duty=duty)
-        return res
+        return res.get("status") == "ok"
 
     def get_pwm_config(self) -> Dict[str, int]:
-        """現在のPWM周波数、分解能、および最大デューティを取得"""
         """現在のPWM周波数、分解能、および最大デューティを取得"""
         res = self.command(protocol.CMD_GET_PWM_CONFIG)
         if not isinstance(res.get("freq"), int) or not isinstance(res.get("res"), int) or not isinstance(res.get("max_duty"), int):
@@ -140,6 +139,37 @@ class ESP32S3IOBase(ABC):
         """デバイスがサポートするコマンド一覧を取得"""
         res = self.command(protocol.CMD_HELP)
         return res.get("commands", [])
+
+    def i2c_scan(self) -> List[int]:
+        """I2C バスをスキャンし、応答のあったデバイスのアドレス一覧を返す"""
+        res = self.command(protocol.CMD_I2C_SCAN)
+        return res.get("devices", [])
+
+    def i2c_read(self, addr: int, length: int) -> List[int]:
+        """I2C デバイスからデータを読み取る"""
+        if not isinstance(addr, int) or not isinstance(length, int):
+            raise ValueError("addr and length must be integers")
+        res = self.command(protocol.CMD_I2C_READ, addr=addr, len=length)
+        data = res.get("data")
+        if not isinstance(data, list):
+            raise ESP32S3IOProtocolError(f"Invalid i2c_read response: {res}")
+        return data
+
+    def i2c_write(self, addr: int, data: List[int]) -> bool:
+        """I2C デバイスにデータを書き込む"""
+        if not isinstance(addr, int) or not isinstance(data, list):
+            raise ValueError("addr must be int and data must be a list of integers")
+        res = self.command(protocol.CMD_I2C_WRITE, addr=addr, data=data)
+        return res.get("status") == "ok"
+
+    def get_sensors(self) -> Dict[str, Any]:
+        """BME280, MPU6050, VL53L0X などの接続済みセンサー値を一括取得"""
+        return self.command(protocol.CMD_GET_SENSORS)
+
+    def set_oled(self, text: str, x: int = 0, y: int = 0, size: int = 1, clear: bool = True) -> bool:
+        """SSD1306 OLED ディスプレイにテキストを表示"""
+        res = self.command(protocol.CMD_SET_OLED, text=text, x=x, y=y, size=size, clear=clear)
+        return res.get("status") == "ok"
 
     def close(self):
         """リソースを解放する (サブクラスでオーバーライド)"""
