@@ -1,5 +1,12 @@
 # ESP32IO Python API
 
+> **⚠️ 開発終了 / Archived — Migrated to MQTT**
+>
+> このリポジトリの開発は終了しました。後継の MQTT 版に移行してください。
+> This repository is no longer maintained. Development has moved to the MQTT-based successor.
+>
+> 👉 https://github.com/noritama-lab/esp32io-mqtt-api
+
 ESP32IO is a lightweight Python client for controlling ESP32-S3 devices over USB serial or Wi-Fi (HTTP).
 
 日本語 / English
@@ -7,6 +14,12 @@ ESP32IO is a lightweight Python client for controlling ESP32-S3 devices over USB
 ---
 
 ## 日本語
+
+> **本リポジトリはアーカイブされ、開発を終了しました。**
+> USB シリアル / Wi-Fi (HTTP) 通信の Python API は今後更新されません。
+> 今後は MQTT 版クライアントをご利用ください。
+>
+> 移行先: https://github.com/noritama-lab/esp32io-mqtt-api
 
 ESP32IO は、ESP32-S3 を **USB シリアル** または **Wi-Fi (HTTP)** 経由で制御するための軽量 Python クライアントです。  
 ESP32 側で JSON コマンドを受け取るファームウェアと組み合わせることで、**DIO / ADC / PWM / 内蔵 RGB LED / I2C / OLED** を統一 API で扱えます。
@@ -175,6 +188,12 @@ Copyright (c) 2026 Noritama-Lab
 ---
 
 ## English
+
+> **This repository is archived and no longer maintained.**
+> The USB serial / Wi-Fi (HTTP) Python API will not receive further updates.
+> Please migrate to the MQTT-based client instead.
+>
+> Migration target: https://github.com/noritama-lab/esp32io-mqtt-api
 
 ESP32IO is a lightweight Python client for controlling an ESP32-S3 over **USB serial** or **Wi-Fi (HTTP)**.  
 When paired with firmware that accepts JSON commands, it provides a unified API for **DIO, ADC, PWM, RGB LED, I2C, sensors, and OLED control**.
